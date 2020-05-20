@@ -30,7 +30,8 @@
 ################################################################################
 
 CMAKE_MINIMUM_REQUIRED (VERSION 3.1)
-PROJECT(flute)
+
+PROJECT(flute VERSION 3.1.1)
 
 SET(CMAKE_CXX_STANDARD 11)
 
@@ -44,18 +45,76 @@ set(POST9_CPP ${CMAKE_CURRENT_BINARY_DIR}/POST9.cpp)
 add_custom_command(OUTPUT ${POWV9_CPP}
   COMMAND ${FLUTE_HOME}/etc/MakeDatVar.tcl powv9 ${POWV9_CPP} ${POWV9_DAT}
   DEPENDS ${POWV9_DAT} ${FLUTE_HOME}/etc/MakeDatVar.tcl
-  )
+)
 
 add_custom_command(OUTPUT ${POST9_CPP}
   COMMAND ${FLUTE_HOME}/etc/MakeDatVar.tcl post9 ${POST9_CPP} ${POST9_DAT}
   DEPENDS ${POST9_DAT} ${FLUTE_HOME}/etc/MakeDatVar.tcl
-  )
+)
 
 ADD_LIBRARY(flute
   STATIC
   flute.cpp
   ${POWV9_CPP}
   ${POST9_CPP}
-  )
+)
 
-TARGET_INCLUDE_DIRECTORIES(flute PUBLIC ${FLUTE_HOME})
+TARGET_INCLUDE_DIRECTORIES(flute PUBLIC
+    $<BUILD_INTERFACE:${FLUTE_HOME}>
+    $<INSTALL_INTERFACE:include>
+)
+
+###############################################################################
+# Install rules
+###############################################################################
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
+set(FLUTE_EXPORT_NAME flute-export)
+set(FLUTE_EXPORT_NAMESPACE Flute::)
+
+export(TARGETS flute
+    NAMESPACE ${FLUTE_EXPORT_NAMESPACE}
+    FILE ${PROJECT_BINARY_DIR}/${FLUTE_EXPORT_NAME}.cmake
+)
+
+write_basic_package_version_file(
+    ${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
+    COMPATIBILITY SameMajorVersion
+)
+
+configure_package_config_file(
+    ${PROJECT_SOURCE_DIR}/cmake/package-config.cmake.in
+    ${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_DATADIRA}/${PROJECT_NAME}/cmake
+)
+
+install(TARGETS flute 
+    EXPORT ${FLUTE_EXPORT_NAME}
+    LIBRARY
+        COMPONENT Libraries
+        NAMELINK_COMPONENT Development
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE
+        COMPONENT Libraries
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(FILES ${FLUTE_HOME}/flute.h 
+    COMPONENT Development
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(
+    FILES
+        ${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config.cmake
+        ${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
+    COMPONENT Development
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/cmake
+)
+
+install(EXPORT ${FLUTE_EXPORT_NAME}
+    COMPONENT Development
+    NAMESPACE ${FLUTE_EXPORT_NAMESPACE}
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/cmake
+)
